@@ -89,6 +89,16 @@
 		filter: blur(12px);
 	}
 
+	.text-shadow {
+		text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000,
+			1px 1px 0 #000;
+	}
+
+	.text-shadow-pink {
+		text-shadow: -1px -1px 0 #ff00ff, 1px -1px 0 #ff00ff, -1px 1px 0 #ff00ff,
+			1px 1px 0 #ff00ff;
+	}
+
 	/* 隐藏滚动条的样式 */
 	.hide-scrollbar {
 		/* 对于 WebKit 浏览器 */
