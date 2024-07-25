@@ -10,7 +10,7 @@ datasource db {
 model SensitiveWord {
   id         String   @id @default(cuid())
   word       String   @unique
-  category   String?
+  type   String?
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 }
