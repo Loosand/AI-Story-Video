@@ -7,21 +7,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model SensitiveWord {
-  id         String   @id @default(cuid())
-  word       String   @unique
-  type   String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-}
-
-model Article {
-  id          String   @id @default(cuid())
+model article {
+  id          String   @id
   title       String
   description String
   type        String
   content     String
   status      String
   created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  updated_at  DateTime
+}
+
+model sensitiveword {
+  id         String   @id
+  word       String   @unique(map: "SensitiveWord_word_key")
+  created_at DateTime @default(now())
+  updated_at DateTime
+  type       String?
 }
