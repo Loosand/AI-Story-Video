@@ -1,5 +1,5 @@
 import { WordPage } from "@/features/word"
 
-export default function Page() {
+export default async function Page() {
 	return <WordPage />
 }

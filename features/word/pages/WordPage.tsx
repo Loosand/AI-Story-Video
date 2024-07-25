@@ -10,17 +10,18 @@ import { useDeleteWord } from "../api/delete-word"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { showWarningToast } from "@/components/ui/toast"
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton"
 
 export function WordPage() {
 	const [value, setValue] = useState("")
 
 	const { run: addWord } = useAddWord()
-	const { run } = useDeleteWord()
-	const getWordsQuery = useGetWords()
+	const { run: deleteWord } = useDeleteWord()
+	const { data, run: getWords, loading: getWordsLoading } = useGetWords()
 
-	const tags = useMemo(() => {
-		return getWordsQuery.data ?? []
-	}, [getWordsQuery])
+	const words = useMemo(() => {
+		return data ?? []
+	}, [data])
 
 	const handleAddWord = () => {
 		if (value.trim() === "") {
@@ -29,12 +30,12 @@ export function WordPage() {
 		}
 		addWord(value.trim())
 		setValue("")
-		getWordsQuery.run()
+		getWords()
 	}
 
 	const handleDeleteWord = (wordId: string) => {
-		run(wordId)
-		getWordsQuery.run()
+		deleteWord(wordId)
+		getWords()
 	}
 
 	return (
@@ -51,18 +52,30 @@ export function WordPage() {
 				</Button>
 			</div>
 
-			<div className="mt-10 flex flex-wrap gap-4">
-				{tags.map((tag) => (
-					<Button
-						key={tag.id}
-						variant="destructive"
-						onClick={() => {
-							handleDeleteWord(tag.id)
-						}}>
-						<Trash className="mr-2 size-4" /> {tag.word}
-					</Button>
-				))}
-			</div>
+			{getWordsLoading ? (
+				<LoadingSkeleton />
+			) : (
+				<>
+					{!!words.length ? (
+						<div className="mt-10 flex flex-wrap gap-4">
+							{words.map((word) => (
+								<Button
+									key={word.id}
+									variant="destructive"
+									onClick={() => {
+										handleDeleteWord(word.id)
+									}}>
+									<Trash className="mr-2 size-4" /> {word.word}
+								</Button>
+							))}
+						</div>
+					) : (
+						<div className="mt-10 rounded-md py-36 text-center outline-dashed">
+							暂无敏感词
+						</div>
+					)}
+				</>
+			)}
 		</section>
 	)
 }
