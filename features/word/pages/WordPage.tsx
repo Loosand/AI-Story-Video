@@ -1,7 +1,7 @@
 "use client"
 
 import { Trash } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useAddWord } from "../api/add-word"
 import { useGetWords } from "../api/get-words"
@@ -22,6 +22,10 @@ export function WordPage() {
 	const words = useMemo(() => {
 		return data ?? []
 	}, [data])
+
+	useEffect(() => {
+		console.log("DATABASE_URL:", process.env.DATABASE_URL)
+	}, [])
 
 	const handleAddWord = () => {
 		if (value.trim() === "") {
