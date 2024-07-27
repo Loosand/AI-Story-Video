@@ -28,7 +28,6 @@
 		"clsx": "^2.1.1",
 		"dotenv": "^16.4.5",
 		"hast-util-from-html-isomorphic": "^2.0.0",
-		"locales": "link:@bytemd/plugin-gfm/lib/locales",
 		"lodash-es": "^4.17.21",
 		"lucide-react": "^0.414.0",
 		"mini-svg-data-uri": "^1.4.4",
