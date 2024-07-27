@@ -1,9 +1,20 @@
+// model article {
+//   id          String   @id
+//   title       String
+//   description String
+//   type        String
+//   content     String
+//   status      String
+//   created_at  DateTime @default(now())
+//   updated_at  DateTime
+// }
+
 "use server"
 
 import { prisma } from "@/lib/prisma"
 
-export const isWordExist = async (id: string): Promise<boolean> => {
-	const isExist = await prisma.sensitiveWord.findUnique({ where: { id } })
+export const isArticleExist = async (id: string): Promise<boolean> => {
+	const isExist = await prisma.article.findUnique({ where: { id } })
 	return Boolean(isExist)
 }
 
