@@ -1,7 +1,5 @@
 "use client"
 
-"use client"
-
 import { Editor, type EditorProps } from "@bytemd/react"
 import zh_Hans from "bytemd/locales/zh_Hans.json"
 

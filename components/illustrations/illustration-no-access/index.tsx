@@ -1,21 +1,21 @@
-import React from 'react';
+import React from "react"
 
-import { cn } from '@/lib/utils';
+import { IllustrationNoAccessDark } from "./illustration-no-access-dark"
+import { IllustrationNoAccessLight } from "./illustration-no-access-light"
 
-import { IllustrationNoAccessDark } from './illustration-no-access-dark';
-import { IllustrationNoAccessLight } from './illustration-no-access-light';
+import { cn } from "@/lib/utils"
 
 export function IllustrationNoAccess(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <>
-      <IllustrationNoAccessDark
-        {...props}
-        className={cn(props.className, 'hidden dark:block')}
-      />
-      <IllustrationNoAccessLight
-        {...props}
-        className={cn(props.className, 'block dark:hidden')}
-      />
-    </>
-  );
+	return (
+		<>
+			<IllustrationNoAccessDark
+				{...props}
+				className={cn(props.className, "hidden dark:block")}
+			/>
+			<IllustrationNoAccessLight
+				{...props}
+				className={cn(props.className, "block dark:hidden")}
+			/>
+		</>
+	)
 }
