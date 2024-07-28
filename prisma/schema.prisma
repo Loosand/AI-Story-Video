@@ -8,20 +8,20 @@ datasource db {
 }
 
 model article {
-  id          String   @id
+  id          String   @id @default(cuid())
   title       String
   description String
   type        String
   content     String
   status      String
   created_at  DateTime @default(now())
-  updated_at  DateTime
+  updated_at  DateTime @updatedAt
 }
 
 model sensitiveword {
-  id         String   @id
-  word       String   @unique(map: "SensitiveWord_word_key")
+  id         String   @id @default(cuid())
+  word       String   @unique
   created_at DateTime @default(now())
-  updated_at DateTime
+  updated_at DateTime @updatedAt
   type       String?
 }

@@ -3,13 +3,13 @@
 import { prisma } from "@/lib/prisma"
 
 export const isWordExist = async (id: string): Promise<boolean> => {
-	const isExist = await prisma.sensitiveWord.findUnique({ where: { id } })
+	const isExist = await prisma.sensitiveword.findUnique({ where: { id } })
 	return Boolean(isExist)
 }
 
 export const getWords = async () => {
 	try {
-		const words = await prisma.sensitiveWord.findMany()
+		const words = await prisma.sensitiveword.findMany()
 		console.log("Fetched words:", words) // 打印查询结果
 		return words
 	} catch (error) {
@@ -19,16 +19,16 @@ export const getWords = async () => {
 }
 
 export const deleteWord = async (id: string) => {
-	const deletedWord = await prisma.sensitiveWord.delete({
+	const deletedWord = await prisma.sensitiveword.delete({
 		where: { id },
 	})
 	return deletedWord
 }
 
 export const addWord = async (word: string) => {
-	const newWord = await prisma.sensitiveWord.create({
+	const newWord = await prisma.sensitiveword.create({
 		data: {
-			word,
+			word: word,
 		},
 	})
 	return newWord
