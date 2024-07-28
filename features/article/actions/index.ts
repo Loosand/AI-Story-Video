@@ -1,14 +1,3 @@
-// model article {
-//   id          String   @id
-//   title       String
-//   description String
-//   type        String
-//   content     String
-//   status      String
-//   created_at  DateTime @default(now())
-//   updated_at  DateTime
-// }
-
 "use server"
 
 import { prisma } from "@/lib/prisma"
@@ -18,29 +7,46 @@ export const isArticleExist = async (id: string): Promise<boolean> => {
 	return Boolean(isExist)
 }
 
-export const getWords = async () => {
-	try {
-		const words = await prisma.sensitiveWord.findMany()
-		console.log("Fetched words:", words) // 打印查询结果
-		return words
-	} catch (error) {
-		console.error("Error fetching words:", error) // 打印错误信息
-		throw error
-	}
-}
-
-export const deleteWord = async (id: string) => {
-	const deletedWord = await prisma.sensitiveWord.delete({
-		where: { id },
-	})
-	return deletedWord
-}
-
-export const addWord = async (word: string) => {
-	const newWord = await prisma.sensitiveWord.create({
+export const addArticle = async (
+	title: string,
+	description: string,
+	type: string,
+	content: string
+): Promise<void> => {
+	await prisma.article.create({
 		data: {
-			word,
+			title,
+			description,
+			type,
+			content,
+			status: "draft", // Assuming the default status is "draft"
 		},
 	})
-	return newWord
+}
+
+export const deleteArticle = async (id: string): Promise<void> => {
+	await prisma.article.delete({ where: { id } })
+}
+
+export const getArticle = async (id: string) => {
+	const article = await prisma.article.findUnique({ where: { id } })
+	return article
+}
+
+export const updateArticle = async (
+	id: string,
+	title: string,
+	description: string,
+	type: string,
+	content: string
+): Promise<void> => {
+	await prisma.article.update({
+		where: { id },
+		data: {
+			title,
+			description,
+			type,
+			content,
+		},
+	})
 }

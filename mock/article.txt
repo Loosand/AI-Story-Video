@@ -1,70 +1,3 @@
-"use client"
-
-import { useEffect, useState } from "react"
-import pinyin from "pinyin"
-
-import { BytemdEditor } from "@/components/bytemd"
-import { useGetWords } from "@/features/word/api/get-words"
-import { Button } from "@/components/ui/button"
-
-export function EditArticlePage() {
-	const [content, setContent] = useState(ARTICLE)
-	const [hasSensitiveWord, setHasSensitiveWord] = useState(true)
-	const { data: words } = useGetWords()
-
-	useEffect(() => {
-		if (words && words.length > 0) {
-			let highlightedContent = ARTICLE
-
-			words.forEach((item) => {
-				const regex = new RegExp(item.word, "gi")
-				highlightedContent = highlightedContent.replace(
-					regex,
-					`<mark>${item.word}</mark>`
-				)
-			})
-
-			setContent(highlightedContent)
-		}
-	}, [words])
-
-	function replaceWithPinyin(content: string): string {
-		const regex = /<mark>(.*?)<\/mark>/gi
-		console.log(regex)
-
-		const replacedContent = content.replace(regex, (_, word) => {
-			const pinyinWord = pinyin(word, {
-				style: pinyin.STYLE_NORMAL,
-			})
-			return pinyinWord.join("")
-		})
-
-		setHasSensitiveWord(replacedContent === content)
-
-		return replacedContent
-	}
-
-	return (
-		<section className="space-y-6">
-			<header>
-				<Button
-					disabled={!hasSensitiveWord}
-					onClick={() => {
-						setContent((pre) => replaceWithPinyin(pre))
-					}}
-					className="">
-					一键替换为拼音
-				</Button>
-			</header>
-
-			<div id="content-editor">
-				<BytemdEditor body={content} setContent={setContent} />
-			</div>
-		</section>
-	)
-}
-
-const ARTICLE = `
 京圈太子爷破天荒发了一张腹肌照火了，配文：「晚上等你。」
 当红小花隔空回应：「今晚会早点回家。」
 一夜之间，全网疯狂磕 CP：「太甜了，这就是官宣吧。」
@@ -225,4 +158,3 @@ CP 粉热评：「甜死了，这就是官宣吧。」
 「宝宝，别不理我，我保证，以后坚决不在chuang上拒绝你的任何要求……」
 我已经用了此生最快的速度试图结束投屏，但无奈宋屿辞消息发的太快，还是有几条暴露在大众视野下。
 宋屿辞连珠炮弹似的消息轰炸和十八禁的发言风格硬控了全场十几秒。
-`

@@ -1,11 +1,11 @@
 /* 创建、编辑笔记的编辑器高度 */
 #note-editor .bytemd {
-	@apply h-[60vh] min-h-[560px];
+	@apply h-[50vh] min-h-[460px];
 }
 
 /* 创建、编辑博客、片段的编辑器高度 */
 #content-editor .bytemd {
-	@apply h-screen;
+	@apply h-[80vh];
 }
 
 .bytemd .CodeMirror,
@@ -22,7 +22,7 @@
 	@apply prose prose-neutral !w-full !max-w-full dark:prose-invert;
 }
 
-.markdown-body a {  
+.markdown-body a {
 	@apply mx-1 inline-flex items-center gap-1 !no-underline;
 }
 
