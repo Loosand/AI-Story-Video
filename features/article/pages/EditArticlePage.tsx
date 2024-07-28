@@ -1,20 +1,56 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import pinyin from "pinyin"
+import { Loader2, Pen, Trash } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { BytemdEditor } from "@/components/bytemd"
 import { useGetWords } from "@/features/word/api/get-words"
-import { Button } from "@/components/ui/button"
+import { generateArticleData } from "@/utils/pipeline/summary"
+import { useAddWord } from "@/features/word/api/add-word"
+import { showWarningToast } from "@/components/ui/toast"
+import { useDeleteWord } from "@/features/word/api/delete-word"
+
+export interface ArticleData {
+	summary: string
+	titles: string[]
+	types: string[]
+	token: number
+}
 
 export function EditArticlePage() {
+	const { run: addWord } = useAddWord()
+	const { run: getWords, data } = useGetWords()
+	const { run: deleteWord } = useDeleteWord()
+	const [value, setValue] = useState("")
 	const [content, setContent] = useState(ARTICLE)
 	const [hasSensitiveWord, setHasSensitiveWord] = useState(true)
-	const { data: words } = useGetWords()
+	const [generating, setGenerating] = useState(false)
+	const [articleData, setArticleData] = useState<ArticleData>()
+	const [selectedText, setSelectedText] = useState("")
+	const [menuVisible, setMenuVisible] = useState(false)
+	const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 })
 
-	useEffect(() => {
-		if (words && words.length > 0) {
-			let highlightedContent = ARTICLE
+	const words = useMemo(() => {
+		return data ?? []
+	}, [data])
+
+	function matchWord() {
+		if (words && content) {
+			let highlightedContent = content
+			const sensitiveWords = words.filter((item) => content.includes(item.word))
+			setHasSensitiveWord(sensitiveWords.length > 0)
 
 			words.forEach((item) => {
 				const regex = new RegExp(item.word, "gi")
@@ -26,11 +62,10 @@ export function EditArticlePage() {
 
 			setContent(highlightedContent)
 		}
-	}, [words])
+	}
 
 	function replaceWithPinyin(content: string): string {
 		const regex = /<mark>(.*?)<\/mark>/gi
-		console.log(regex)
 
 		const replacedContent = content.replace(regex, (_, word) => {
 			const pinyinWord = pinyin(word, {
@@ -44,22 +79,197 @@ export function EditArticlePage() {
 		return replacedContent
 	}
 
+	async function handleGenerateArticleData(article: string) {
+		setGenerating(true)
+		generateArticleData({ article })
+			.then((res) => {
+				console.log("文章数据生成成功:", res)
+				setArticleData(JSON.parse(res as string))
+			})
+			.catch((error) => {
+				console.error("生成文章数据时出错:", error)
+			})
+			.finally(() => {
+				setGenerating(false)
+			})
+	}
+
+	function handleDeleteWord(wordId: string) {
+		deleteWord(wordId)
+		getWords()
+	}
+
+	function handleAddWord() {
+		if (value.trim() === "") {
+			showWarningToast("请输入敏感词")
+			return
+		}
+		addWord(value.trim())
+		setValue("")
+		getWords()
+	}
+
+	useEffect(() => {
+		const handleMouseUp = () => {
+			const selection = window?.getSelection()
+			const text = selection ? selection.toString() : ""
+			setSelectedText(text)
+		}
+
+		const handleContextMenu = (e: MouseEvent) => {
+			e.preventDefault()
+			setMenuPosition({ x: e.pageX, y: e.pageY })
+			setMenuVisible(true)
+		}
+
+		document.addEventListener("mouseup", handleMouseUp)
+		document.addEventListener("contextmenu", handleContextMenu)
+
+		return () => {
+			document.removeEventListener("mouseup", handleMouseUp)
+			document.removeEventListener("contextmenu", handleContextMenu)
+		}
+	}, [])
+
+	useEffect(() => {
+		if (selectedText.length <= 0) {
+			setMenuVisible(false)
+		}
+	}, [selectedText])
+
 	return (
 		<section className="space-y-6">
-			<header>
-				<Button
-					disabled={!hasSensitiveWord}
-					onClick={() => {
-						setContent((pre) => replaceWithPinyin(pre))
-					}}
-					className="">
-					一键替换为拼音
-				</Button>
+			<header className="flex justify-between">
+				<div className="space-x-6">
+					<Button onClick={matchWord}>匹配敏感词</Button>
+					<Button
+						disabled={!hasSensitiveWord}
+						onClick={() => {
+							setContent((pre) => replaceWithPinyin(pre))
+						}}>
+						一键替换为拼音
+					</Button>
+
+					<Button
+						disabled={generating}
+						onClick={() => {
+							handleGenerateArticleData(content)
+						}}>
+						{generating && <Loader2 className="mr-2 size-4 animate-spin" />}
+						生成标题、概述、类型
+					</Button>
+				</div>
+
+				<span className="flex w-fit items-center gap-2">
+					<Input
+						type="text"
+						placeholder="回车后添加敏感词"
+						value={value}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								handleAddWord()
+							}
+						}}
+						onChange={(e) => setValue(e.target.value)}
+					/>
+					<Dialog>
+						<DialogTrigger asChild>
+							<Button variant="outline">敏感词管理</Button>
+						</DialogTrigger>
+						<DialogContent className="sm:max-w-[425px]">
+							<DialogHeader>
+								<DialogTitle>管理敏感词</DialogTitle>
+							</DialogHeader>
+							<div className="grid gap-4 py-4">
+								{!!words.length ? (
+									<div className="mx-auto flex w-fit flex-wrap gap-4">
+										{words.map((word) => (
+											<Button
+												key={word.id}
+												variant="destructive"
+												onClick={() => {
+													handleDeleteWord(word.id)
+												}}>
+												<Trash className="mr-2 size-4" /> {word.word}
+											</Button>
+										))}
+									</div>
+								) : (
+									<div className="mt-10 rounded-md py-36 text-center outline-dashed">
+										暂无敏感词
+									</div>
+								)}
+							</div>
+							<DialogFooter>
+								<Button>关闭</Button>
+							</DialogFooter>
+						</DialogContent>
+					</Dialog>
+				</span>
 			</header>
 
 			<div id="content-editor">
 				<BytemdEditor body={content} setContent={setContent} />
 			</div>
+
+			{articleData && (
+				<ul className="space-y-4 [&>li]:space-y-2">
+					<li>
+						<h2 className="text-xl font-bold">总结</h2>
+						<p>{articleData?.summary}</p>
+					</li>
+					<li>
+						<h2 className="text-xl font-bold">标题</h2>
+						<div className="space-x-4">
+							{articleData?.titles.map((title, index) => {
+								return (
+									<span
+										key={index}
+										className="rounded-md bg-gray-200 px-2 py-1">
+										{title}
+									</span>
+								)
+							})}
+						</div>
+					</li>
+					<li>
+						<h2 className="text-xl font-bold">类型</h2>
+						<div className="space-x-4">
+							{articleData?.types.map((type, index) => {
+								return (
+									<span
+										key={index}
+										className="rounded-md bg-gray-200 px-2 py-1">
+										{type}
+									</span>
+								)
+							})}
+						</div>
+					</li>
+				</ul>
+			)}
+
+			<menu>
+				{menuVisible && (
+					<ul
+						style={{
+							top: menuPosition.y,
+							left: menuPosition.x,
+							position: "absolute",
+						}}>
+						<li>
+							<Button
+								onClick={() => {
+									addWord(selectedText)
+									setMenuVisible(false)
+									getWords()
+								}}>
+								添加到词库
+							</Button>
+						</li>
+					</ul>
+				)}
+			</menu>
 		</section>
 	)
 }
@@ -82,102 +292,6 @@ const ARTICLE = `
 起哄声中，苏琪低下头，羞涩一笑：「还早啦。」
 我没忍住皱了皱眉。
 但出于礼貌，并没有打断苏琪讲话。
-弹幕沸腾了：
-「哇咔咔咔，所以琪宝这是承认和宋哥的恋爱关系了！前两天刚看到一个占卜，说我们琪宝是豪门太太的面相，大贵之人，没想到这么快就当上京圈太子妃了。」
-「琪琪也太可爱了吧，怪不得传闻中那位高冷不近女色的太子爷会动心。甜死了！！！」
-「微博照片你们都看了吗？哇靠，宋哥身材也太好了，看的我小脸通黄，不敢想象琪琪的生活有多么xin福。」
-这时，有人注意到角落里的我：
-「等等，陈柠那个女人是什么表情啊，不会是看我们琪宝和宋哥在一起嫉妒了吧？好可怕。」
-「我们琪琪人气比她高，比她受欢迎，男朋友还是京圈太子爷，下半辈子享不尽的荣华富贵，呵，她心里一定酸死了。」
-看到这几条恶评，我愣了一下。
-我并不是嫉妒苏琪，只是有些疑惑。
-三天前，因为宋屿辞这个古板男不同意尝试新姿势，我们吵了一架，陷入冷战。
-我拉黑了他所有的社交方式。
-没想到这男人联系不上我，昨晚居然破天荒更新了八百年没碰过的微博。
-照片中，男人刚洗完澡，躺在床上，晶莹的水珠恰到好处的点缀在壁垒分明的腹肌，说不出的诱人。
-配文：「晚上等你。」
-更是将这种暧昧的氛围推到极致。
-几分钟后，苏琪转发了这条微博，羞涩的隔空喊话道：「今晚会早点回家。」
-当晚，苏琪和宋屿辞的 CP 热度冲到热搜榜一。
-传的沸沸扬扬，煞有介事。
-CP 粉热评：「甜死了，这就是官宣吧。」
-看的我一脸问号。
-如果苏琪是宋屿辞的官宣女友，那我是谁？
-难道这男人才和我冷战三天就另寻新欢了？
-好好好，和我在一起的时候矜持的要命，公共场合拉个小手都脸红心跳。
-费尽心思好不容易tiao教好了，结果他跑去和我对家高调示爱？？！
-2
-自我介绍环节过去之后，主持人开始安排第一个热场游戏。
-俗套的真心话大冒险。
-第一把，苏琪输了。
-主持人兴奋起来：「我们琪琪是选择真心话还是大冒险呢。」
-苏琪思索片刻：「真心话吧。」
-主持人见有料可挖，激动的尾音上扬，「哦，问什么都可以吗？」
-苏琪闻言羞涩的捂住脸，「不要太过火就好，那位比较低调。」
-弹幕又是一阵磕糖狂潮：
-「哈哈哈哈，宋哥：别那位了，直接报我身份证号吧。」
-「谁懂啊，正式官宣后，小情侣都不避人了吗？甜度严重超标。」
-「陈柠的脸都绿了，还翻白眼。和我们琪琪争资源争这么多年，现在我们琪琪有人撑腰了，傻眼了吧。」
-不是……
-我只是闲得无聊调整下美瞳的位置，怎么就变成翻白眼了？
-得到苏琪允许后，主持人一脸姨母笑：「好，我们的问题是，可不可以描述一下和那位的相识过程。」
-苏琪抿唇一笑，像是在回忆：「去年冬天，我作为宋氏集团的代言人，结束广告拍摄工作后，屿辞特地买了一杯热可可送我，我们一起在花园漫步……」
-苏琪越说脸越红，最后害羞的垂下眸子。
-「哇哦～好浪漫。」主持人和其他嘉宾适时给出反应，仿佛也陶醉在其中。
-在角落充当背景板的我却越听越不对劲，放下吃到一半的橘子，忍不住问道：
-「你确定那杯热可可是宋屿辞专门买给你的？」
-苏琪顿了一下，扬起标志性微笑，声音有些委屈：「是呀，难道陈柠姐觉得我在撒谎吗？」
-我委婉劝道：「你要不再仔细回忆回忆……」
-苏琪说的那次录制，我有印象。
-可我清楚的记得，那天由于某些羞耻的原因，宋屿辞压根就没去公司，而是和我在卧室待了一下午。
-热可可是公司管理层送给所有工作人员的福利。
-就连保洁阿姨都有一杯。
-至于花园漫步就更扯了，那天下的是鸽子蛋大的冰雹……
-苏琪大概没想到自己会遭到质疑，甜美的笑容僵在脸上，语气带了点不易察觉的愠色：
-「陈柠姐，你这样怀疑我，难道是和屿辞很熟吗？」
-职业原因，我并不想暴露自己和宋屿辞的关系，再加上还在冷战，于是泛泛回道：
-「还行吧。」
-也就是一周会负距离交流四五次的程度。
-苏琪一派天真模样：「哦，这样吗。可是，陈柠姐，我为什么从来没听屿辞提起过你……」
-弹幕炸了：
-「哈哈哈哈，打脸来的太快就像龙卷风，要被陈柠这个死装姐笑死了，居然敢质疑琪宝和宋哥的感情，她怕是连宋哥的面都没见过。」
-「弱弱问一句，只有我一个人感觉，陈柠这个躲闪的小眼神看上去好像真的和宋哥有故事吗？万一苏琪真的在撒谎呢……」
-「楼上，你哪来的这么神经的错觉。宋哥和这个爱蹭姐能有什么故事，平时什么都要和琪琪抢也就算了，现在连宋哥都敢抢，脸皮真是厚的没边了。」
-3
-真心话大冒险游戏结束后。
-已经临近中午。
-节目从开播以来便有一个约定俗成的惯例。
-每一期的飞行嘉宾都要从微信列表中邀请一位好友来节目组现场进行抽签。
-来决定嘉宾后续午餐吃的是大鱼大肉还是黑暗料理。
-这也是节目组昭然若揭的小心机，只需要支付两个人的费用，却能换来四个明星的热度。
-助理把节目刚开始录制时收上去的手机还给我和苏琪。
-主持人神神秘秘开口：「今天的邀请环节和之前不太一样哦，需要把手机投屏到我们的大屏幕，由粉丝进行挑选。」
-苏琪善解人意表示赞同，点开微信，大屏幕上显示出微信列表。
-置顶聊天的备注是「我家宋宋」。
-观看直播的人数隐隐翻了一倍，都在刷「宋屿辞」的名字，热度飙升。
-主持人一脸期待看向苏琪：「看来我和粉丝们都非常期待宋夫人和宋先生合体呢。」
-在众人的起哄声中，苏琪缓缓在聊天框输入：「屿辞，中午有时间吗？」
-弹幕沸腾了：
-「哟哟哟，果然谈恋爱会让人变成小孩子，我们高冷宋哥也不能免俗。这么可爱的备注是要甜死谁呀，期待小情侣同框，看陈柠还敢不敢这么狂。」
-「听说宋氏家族家规森严，性格低调，从不允许子孙参与和事业无关的娱乐活动。宋哥这是要为琪琪破例了吗，哇塞，什么偶像剧情节呀。」
-时间一分一秒过去，「我家宋宋」的对话框始终没有动静。
-苏琪只能先退出投屏，几秒后，忽然惊喜的瞪大眼睛，语气撒娇一般：
-「屿辞回消息了，他说刚刚在开会，今天很忙，中午可能来不了了。」
-「还说要买几个包哄我，哼，几个包怎么够，我要跟他要一百个。我留一个，剩下的送给主持人和粉丝们。」
-听到宋屿辞来不了，弹幕粉丝肉眼可见有些失落，但下一秒又很兴奋的开始磕糖：
-「哇塞，宋哥真的好宠琪琪哦。一百个包，说买就买，真的是壕无人性。琪琪能不能让我魂穿两天。」
-「真的要感谢琪琪呢，为我们带来这么好的福利，不敢相信，京圈太子爷买的包会多么珍贵。」
-「这就是京城首富的豪横吗？怪不得陈柠这么嫉妒琪琪，她现在肯定眼红死了。」
-主持人两眼放光，语气十分夸张：「那先提前感谢琪琪了，我这也算是沾沾宋夫人的福气。」
-一片祥和的气氛中，我没忍住，笑出了声。
-由于苏琪已经退出投屏，大家看不到她的聊天框。
-但我知道，这绝不可能是宋屿辞给她发的消息。
-不出意外，我的笑声又引发一阵弹幕高潮，都在喷我「吃不到葡萄说葡萄酸」。
-只有少数几个理智粉丝提出质疑：
-「怎么就这么巧，刚退出投屏，宋哥就给苏琪回消息了？该不会是苏琪编的吧。」
-但很快，就被涌上来的网友怼了回去：
-「你是陈柠粉丝吧，粉随正主，活像是阴沟里的老鼠，自己人人喊打还见不得别人好。」
-「……」
 听到笑声后，主持人这才注意到我的存在，不走心的随口问道：
 「陈柠，你准备好投屏了吗？」
 我正要点头，猛的想到什么，下意识握紧了手机：「可以稍微等一下吗？」
@@ -199,30 +313,4 @@ CP 粉热评：「甜死了，这就是官宣吧。」
 她刚刚邀请受挫，急于从我身上找回场子：
 「陈柠姐，观众已经做出选择了，你怎么还不给屿辞发消息。」
 几秒后，她恍然大悟般小声道歉：
-「不好意思，陈柠姐，你之前说和屿辞很熟，我以为你们肯定互留了联系方式。没想到，你竟然没有屿辞的微信……」
-弹幕疯狂滚动，嘲讽拉满：
-「哈哈哈哈，牛皮吹大了，收不了场了吧。如果我是陈柠，现在就收拾东西滚出节目，省的在这里丢人现眼，我都替她尴尬。」
-「不是，真的没人觉得苏琪有点茶里茶气吗？她明知道宋哥忙，还让陈柠去邀请，不是故意想看她出丑吗。」
-「哪里茶了？我们琪琪是正宫，看到有狐媚子觊觎自己老公，没破口大骂都算我们琪琪素质高。」
-见我无动于衷，主持人为苏琪鸣不平：「陈柠，琪琪跟你讲话，出于礼貌，是不是应该回复一下呢。」
-我看向苏琪，淡淡开口：「这么好的演技，用在拍戏上多好。」
-主持人气愤的动了动唇，被苏琪拦住了，神情楚楚可怜：「陈柠姐，我理解你现在心情不好。」
-「这样吧，我把屿辞微信推给你，但是他愿不愿意加你，我就不能保证了……」
-我漫不经心打断苏琪：「不用了，我有宋屿辞微信，只是把他拉黑了。」
-苏琪表情有些错愕，瘪了瘪嘴，一副为我着想的口吻：
-「陈柠姐，我知道你性子要强，不喜欢被别人比下去，但这种玩笑还是不要开了，真的不好笑……」
-弹幕乐了：
-「别人费尽心思想加宋哥微信都加不上。她倒好，直接拉黑，骗三岁小孩呢。」
-「最烦这种人，尤其是还装的这么拙劣。我们琪琪小天使都好心劝她几回了，甚至还要把宋哥微信给她，她不知感恩就算了，还这幅拽不拉几的态度。」
-「跟这样的晦气的人录节目，真心疼我们琪琪。」
-主持人一脸幸灾乐祸：「陈柠，既然你说你有宋哥的微信，那现在邀请一下吧。」
-嘉宾齐刷刷投过目光，等着看我出糗。
-众人注视下，我慢条斯理把备注是「宋小狗」的好友从黑名单拉出来：
-「赏你个脸，中午过来做饭。」
-对面秒回：
-「宝宝，你终于想起我了。」
-「中午一起做饭，我已经学习很多遍了。」
-「宝宝，别不理我，我保证，以后坚决不在chuang上拒绝你的任何要求……」
-我已经用了此生最快的速度试图结束投屏，但无奈宋屿辞消息发的太快，还是有几条暴露在大众视野下。
-宋屿辞连珠炮弹似的消息轰炸和十八禁的发言风格硬控了全场十几秒。
 `

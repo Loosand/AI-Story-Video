@@ -5,7 +5,7 @@
 
 /* 创建、编辑博客、片段的编辑器高度 */
 #content-editor .bytemd {
-	@apply h-[80vh];
+	@apply h-[50vh];
 }
 
 .bytemd .CodeMirror,
