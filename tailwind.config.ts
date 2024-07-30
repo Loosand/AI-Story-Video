@@ -90,11 +90,15 @@ const config = {
 						opacity: "0",
 					},
 				},
+				scroll: {
+					"0%": { transform: "translateY(0)" },
+					"100%": { transform: "translateY(-100%)" },
+				},
 			},
 			animation: {
 				"accordion-down": "accordion-down 0.2s ease-out",
 				"accordion-up": "accordion-up 0.2s ease-out",
-				// 光标闪烁动画
+				"scroll-infinite": "scroll 60s linear infinite",
 				"cursor-blink": "cursor-blink 0.6s step-end infinite alternate",
 				"intro-scroll": "intro-scroll 3s ease infinite",
 			},

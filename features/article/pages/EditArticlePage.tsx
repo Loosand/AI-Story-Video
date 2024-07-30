@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from "react"
 import pinyin from "pinyin"
 import { Loader2, Pen, Trash } from "lucide-react"
+import { useRouter } from "next/navigation"
+
+import { updateArticle } from "../actions/index"
+import { useUpdateArticle } from "../api/update-article"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -20,7 +24,9 @@ import { useGetWords } from "@/features/word/api/get-words"
 import { generateArticleData } from "@/utils/pipeline/summary"
 import { useAddWord } from "@/features/word/api/add-word"
 import { showWarningToast } from "@/components/ui/toast"
+import { useAddArticle } from "@/features/article/api/add-article"
 import { useDeleteWord } from "@/features/word/api/delete-word"
+import { Select } from "@/components/ui/select"
 
 export interface ArticleData {
 	summary: string
@@ -29,22 +35,44 @@ export interface ArticleData {
 	token: number
 }
 
-export function EditArticlePage() {
+export function EditArticlePage({
+	id,
+	article,
+}: {
+	id: string
+	article?: {
+		id: string
+		title: string
+		description: string
+		type: string
+		content: string
+		status: string
+	}
+}) {
+	const router = useRouter()
 	const { run: addWord } = useAddWord()
-	const { run: getWords, data } = useGetWords()
+	const { run: getWords, data: getWordsQuery } = useGetWords()
 	const { run: deleteWord } = useDeleteWord()
+	const { run: addArticle } = useAddArticle()
+	const { run: updateArticle } = useUpdateArticle()
+
 	const [value, setValue] = useState("")
-	const [content, setContent] = useState(ARTICLE)
+	const [content, setContent] = useState(article?.content || "")
 	const [hasSensitiveWord, setHasSensitiveWord] = useState(true)
 	const [generating, setGenerating] = useState(false)
-	const [articleData, setArticleData] = useState<ArticleData>()
+	const [articleData, setArticleData] = useState<ArticleData>({
+		summary: article?.description || "",
+		titles: article?.title ? [article.title] : [""],
+		types: article?.type ? [article.type] : [""],
+		token: 0,
+	})
 	const [selectedText, setSelectedText] = useState("")
 	const [menuVisible, setMenuVisible] = useState(false)
 	const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 })
 
 	const words = useMemo(() => {
-		return data ?? []
-	}, [data])
+		return getWordsQuery ?? []
+	}, [getWordsQuery])
 
 	function matchWord() {
 		if (words && content) {
@@ -212,42 +240,112 @@ export function EditArticlePage() {
 				<BytemdEditor body={content} setContent={setContent} />
 			</div>
 
-			{articleData && (
-				<ul className="space-y-4 [&>li]:space-y-2">
-					<li>
-						<h2 className="text-xl font-bold">总结</h2>
-						<p>{articleData?.summary}</p>
-					</li>
-					<li>
-						<h2 className="text-xl font-bold">标题</h2>
-						<div className="space-x-4">
-							{articleData?.titles.map((title, index) => {
-								return (
-									<span
-										key={index}
-										className="rounded-md bg-gray-200 px-2 py-1">
-										{title}
-									</span>
-								)
-							})}
-						</div>
-					</li>
-					<li>
-						<h2 className="text-xl font-bold">类型</h2>
-						<div className="space-x-4">
-							{articleData?.types.map((type, index) => {
-								return (
-									<span
-										key={index}
-										className="rounded-md bg-gray-200 px-2 py-1">
-										{type}
-									</span>
-								)
-							})}
-						</div>
-					</li>
-				</ul>
-			)}
+			<div className="flex">
+				{articleData && (
+					<ul className="space-y-4 [&>li]:space-y-2">
+						<li>
+							<h2 className="text-xl font-bold">标题</h2>
+							<div className="flex space-x-4">
+								{articleData.titles.map((title, index) => {
+									return (
+										<Input
+											key={index}
+											value={title}
+											className="w-fit"
+											onChange={(e) => {
+												const newTitles = articleData.titles.map((item, i) => {
+													if (i === index) {
+														return e.target.value
+													}
+													return item
+												})
+												setArticleData((pre) => ({ ...pre, titles: newTitles }))
+											}}
+										/>
+									)
+								})}
+							</div>
+						</li>
+						<li>
+							<h2 className="text-xl font-bold">总结</h2>
+							<Input
+								value={articleData.summary}
+								onChange={(e) => {
+									setArticleData((pre) => ({ ...pre, summary: e.target.value }))
+								}}
+							/>
+						</li>
+						<li>
+							<h2 className="text-xl font-bold">类型</h2>
+							<div className="flex space-x-4">
+								{articleData.types.map((type, index) => {
+									return (
+										<Input
+											key={index}
+											value={type}
+											className="w-fit"
+											onChange={(e) => {
+												const newTypes = articleData.types.map((item, i) => {
+													if (i === index) {
+														return e.target.value
+													}
+													return item
+												})
+												setArticleData((pre) => ({ ...pre, types: newTypes }))
+											}}
+										/>
+									)
+								})}
+							</div>
+						</li>
+					</ul>
+				)}
+
+				<Button
+					className="ml-auto"
+					onClick={() => {
+						if (!articleData.titles) {
+							showWarningToast("请填写标题")
+							return
+						}
+
+						if (!articleData.summary) {
+							showWarningToast("请填写总结")
+							return
+						}
+
+						if (!articleData.types) {
+							showWarningToast("请填写类型")
+							return
+						}
+
+						if (!content) {
+							showWarningToast("请填写内容")
+							return
+						}
+
+						if (id === "null") {
+							addArticle(
+								articleData.titles[0],
+								articleData.summary,
+								articleData.types[0],
+								content
+							)
+							router.back()
+						} else {
+							updateArticle(
+								id,
+								articleData.titles[0],
+								articleData.summary,
+								articleData.types[0],
+								content
+							)
+							router.back()
+						}
+					}}>
+					保存文章
+				</Button>
+			</div>
 
 			<menu>
 				{menuVisible && (
@@ -273,44 +371,3 @@ export function EditArticlePage() {
 		</section>
 	)
 }
-
-const ARTICLE = `
-京圈太子爷破天荒发了一张腹肌照火了，配文：「晚上等你。」
-当红小花隔空回应：「今晚会早点回家。」
-一夜之间，全网疯狂磕 CP：「太甜了，这就是官宣吧。」
-可是，如果她是官宣女友，那我是谁？
-1
-我是娱乐圈臭名昭著的黑红女星。
-最近运气比较背，连着几部热播剧都因为其他演员犯事被禁了。
-我心情不好，无心拍戏。
-经纪人顺势帮我接了一档直播综艺。
-受邀的飞行嘉宾除了我之外，还有当红流量小花苏琪。
-京圈太子爷宋屿辞的新晋绯闻女友，也是我的对家。
-正式开播后，主持人让我们和观众打招呼。
-苏琪率先开口，一身淡蓝色连衣裙，嗓音甜美：「大家好，我是你们的琪琪呀。」
-主持人坏笑着补充：「也许过段时间，可以改口叫宋夫人了哦。」
-起哄声中，苏琪低下头，羞涩一笑：「还早啦。」
-我没忍住皱了皱眉。
-但出于礼貌，并没有打断苏琪讲话。
-听到笑声后，主持人这才注意到我的存在，不走心的随口问道：
-「陈柠，你准备好投屏了吗？」
-我正要点头，猛的想到什么，下意识握紧了手机：「可以稍微等一下吗？」
-苏琪温柔的宽慰，眼中却闪过一丝嘲讽：「陈柠姐，别有压力，邀请到小演员我们也会很开心的。」
-见我迟迟没有动作，主持人有点烦躁：「陈柠是不是刚刚玩游戏太累了，没事，我来帮你。」
-主持人从我手里夺过手机。
-大屏幕上映入眼帘的是男人性感的轮廓线条，淡粉色的唇瓣轻抿着。
-冷淡又充满性张力。
-虽然只露出了下半张脸，弹幕中还是有人一眼便认出了：
-「这不是宋哥吗？陈柠怎么用宋哥的照片做壁纸？」
-「好家伙，原来陈绿茶是宋哥的梦女。怪不得对我们琪宝敌意那么重。果然，唯粉只对真嫂子破防。」
-「可是这张照片全网都搜不到诶。为什么陈柠会有，我现在越来越觉得这两人不会真的有什么吧……」
-「真个屁，这一眼就是 P 的。要我说，干脆让陈柠也邀请宋哥好了，琪琪太善良，让宋哥本人过来灭灭她的嚣张气焰。」
-「哈哈哈，楼上真他娘的是个人才，这么损的招我怎么没想到呢。对，让她邀！欺负宋哥的女人，还敢 P 图恶心宋哥，我已经迫不及待看陈绿茶身败名裂了。」
-「支持陈柠邀请宋哥。」的弹幕不断刷屏。
-4
-主持人和其他嘉宾一副等着看乐子的表情。
-只有苏琪主动凑过来。
-她刚刚邀请受挫，急于从我身上找回场子：
-「陈柠姐，观众已经做出选择了，你怎么还不给屿辞发消息。」
-几秒后，她恍然大悟般小声道歉：
-`

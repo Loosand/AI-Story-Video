@@ -79,3 +79,38 @@
 		@apply bg-background text-foreground;
 	}
 }
+
+@layer utilities {
+	/* 页面跳转动画 */
+	.page-transition {
+		opacity: 0;
+		background: transparent;
+		transform: translateY(40px);
+		filter: blur(12px);
+	}
+
+	.text-shadow {
+		text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000,
+			1px 1px 0 #000;
+	}
+
+	.text-shadow-pink {
+		text-shadow: -1px -1px 0 #ff00ff, 1px -1px 0 #ff00ff, -1px 1px 0 #ff00ff,
+			1px 1px 0 #ff00ff;
+	}
+
+	/* 隐藏滚动条的样式 */
+	.hide-scrollbar {
+		/* 对于 WebKit 浏览器 */
+		-webkit-scrollbar {
+			display: none;
+		}
+
+		/* 对于 Firefox */
+		scrollbar-width: none;
+
+		/* 隐藏滚动条但允许滚动 */
+		-ms-overflow-style: none; /* IE 和 Edge */
+		overflow: -moz-scrollbars-none; /* 旧版本的 Firefox */
+	}
+}

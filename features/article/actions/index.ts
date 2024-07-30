@@ -29,8 +29,19 @@ export const deleteArticle = async (id: string): Promise<void> => {
 }
 
 export const getArticle = async (id: string) => {
+	if (!id) {
+		throw new Error("Invalid ID parameter")
+	}
+
 	const article = await prisma.article.findUnique({ where: { id } })
 	return article
+}
+
+export const getArticles = async (sortBy: "asc" | "desc" = "desc") => {
+	const articles = await prisma.article.findMany({
+		orderBy: { created_at: sortBy },
+	})
+	return articles
 }
 
 export const updateArticle = async (
@@ -39,6 +50,7 @@ export const updateArticle = async (
 	description: string,
 	type: string,
 	content: string
+	// status: string
 ): Promise<void> => {
 	await prisma.article.update({
 		where: { id },
@@ -47,6 +59,7 @@ export const updateArticle = async (
 			description,
 			type,
 			content,
+			status: "draft", // Assuming the default status is "draft"
 		},
 	})
 }
