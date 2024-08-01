@@ -3,11 +3,61 @@
 import { useRef, useState } from "react"
 import { Moon, Sun, Play } from "lucide-react"
 
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
 export function StoryPage() {
+	// const [videoUrl, setVideoUrl] = useState("")
+	const [recording, setRecording] = useState<boolean>(false)
+	const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
+	const [videoUrl, setVideoUrl] = useState<string>("")
+	const videoRef = useRef<HTMLVideoElement>(null)
+	const [startScroll, setStartScroll] = useState(false)
+
+	const startRecording = async () => {
+		try {
+			const stream = await navigator.mediaDevices.getDisplayMedia({
+				video: true,
+				audio: true,
+			} as MediaStreamConstraints)
+
+			const recorder = new MediaRecorder(stream)
+			let chunks: Blob[] = []
+
+			recorder.ondataavailable = (event: BlobEvent) => {
+				if (event.data.size > 0) {
+					chunks.push(event.data)
+				}
+			}
+
+			recorder.onstop = () => {
+				const blob = new Blob(chunks, { type: "video/webm" })
+				const url = URL.createObjectURL(blob)
+				setVideoUrl(url)
+				const a = document.createElement("a")
+				a.style.display = "none"
+				a.href = url
+				a.download = "recording.webm"
+				document.body.appendChild(a)
+				a.click()
+				window.URL.revokeObjectURL(url)
+			}
+
+			recorder.start()
+			setMediaRecorder(recorder)
+			setRecording(true)
+		} catch (err) {
+			console.error("Error: " + err)
+		}
+	}
+
+	const stopRecording = () => {
+		if (mediaRecorder) {
+			mediaRecorder.stop()
+			setRecording(false)
+		}
+	}
+
 	const [mode, setMode] = useState("90deg")
 	const [from, setFrom] = useState(
 		`${getRandomColorValue(100)},${getRandomColorValue(
@@ -19,6 +69,12 @@ export function StoryPage() {
 			200
 		)},${getRandomColorValue(200)}`
 	)
+
+	// const startRecording = async () => {
+	// 	const response = await fetch("/api/record")
+	// 	const data = await response.json()
+	// 	setVideoUrl(data.videoPath)
+	// }
 
 	function getRandomColorValue(number: number) {
 		return Math.floor(Math.random() * 21) + number // 生成200到220之间的随机数
@@ -60,14 +116,17 @@ export function StoryPage() {
 						mode == "circle" ? "radial" : "linear"
 					}-gradient(${mode}, rgba(${from},1) 0%, rgba(${to},1) 100%)`,
 				}}
-				className={cn(
-					`relative h-screen w-[500px] space-y-10 overflow-hidden px-20 outline`
-				)}>
-				<div className="animate-scroll-infinite space-y-10">
-					<h1 className="text-shadow-pink mx-auto mt-10 h-fit rounded-full px-10 py-3 text-center text-5xl font-bold text-white outline outline-black">
+				className="relative h-screen w-[500px] space-y-10 overflow-hidden px-20">
+				<div className="pt-14">
+					<div className="text-shadow-pink z-50 mx-auto h-fit rounded-full bg-white px-10 py-3 text-center text-5xl font-bold text-white outline outline-black">
 						赔罪自拍
-					</h1>
+					</div>
+				</div>
 
+				<div
+					className={cn("space-y-10 pt-40", {
+						"animate-scroll-infinite": startScroll,
+					})}>
 					<section className="space-y-5 indent-10 text-xl font-bold leading-loose">
 						<p>
 							我是圈里有名的花瓶女明星，出道两年时间，拍了几部偶像剧，但都是戏份不多的女配角，稳坐花瓶美人称号。
@@ -137,10 +196,22 @@ export function StoryPage() {
 						切换浅色背景
 					</Button>
 
-					<Button variant="destructive">
-						<Play className="mr-2 size-4" />
-						开始录制
+					<Button
+						variant="outline"
+						onClick={() => setStartScroll(!startScroll)}>
+						{startScroll ? "停止滚动" : "开始滚动"}
 					</Button>
+
+					<Button
+						onClick={recording ? stopRecording : startRecording}
+						variant={recording ? "destructive" : "default"}>
+						<Play className="mr-2 size-4" />
+						{recording ? "停止录制" : "开始录制"}
+					</Button>
+
+					{videoUrl && (
+						<video ref={videoRef} src={videoUrl} controls autoPlay />
+					)}
 				</div>
 			</div>
 		</>
