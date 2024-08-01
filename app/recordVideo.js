@@ -1,6 +1,6 @@
 const { chromium } = require('playwright');
 
-(async () => {
+export async function startRecord() {
   // 启动 Chromium 浏览器
   const browser = await chromium.launch();
   // 创建一个浏览器上下文，启用视频录制
@@ -20,4 +20,4 @@ const { chromium } = require('playwright');
   await context.close();
   // 关闭浏览器
   await browser.close();
-})();
+}
